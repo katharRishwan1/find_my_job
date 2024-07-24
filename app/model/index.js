@@ -1,7 +1,6 @@
-const db = {};
+exports.user = require('./user');
+exports.role = require('./role');
+exports.otp = require('./otp');
+exports.resetPassword = require('./resetPassword');
+exports.shopType = require('./shopType');
 
-db.user = require('./user');
-db.role = require('./role');
-db.otp = require('./otp');
-db.resetPassword = require('./resetPassword');
-module.exports = db;

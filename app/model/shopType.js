@@ -1,15 +1,13 @@
 const { mongoose } = require("../services/imports");
 
 module.exports = mongoose.model(
-    'role',
+    'shop_type',
     new mongoose.Schema({
-        name: { type: String, uppercase: true },
+        name: String,
         description: String,
         img_url: String,
         status: { type: String, enum: ['active', 'inactive'], default: 'active' },
         isDeleted: { type: Boolean, default: false },
-    },
-        { timestamps: true, versionKey: false }
-    ),
-    'role'
+    }, { timestamps: true, versionKey: false }),
+    'shop_type'
 );
