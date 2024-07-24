@@ -3,9 +3,7 @@ const { mongoose } = require("./app/services/imports");
 console.log('env------env', process.env.PORT);
 console.log('config----', process.env.DB_URL);
 
-mongoose.connect(config.DB_URL,
-    { useNewUrlParser: true, useUnifiedTopology: true }
-).then(() => {
+mongoose.connect(config.DB_URL, { useNewUrlParser: true, useUnifiedTopology: true }).then(() => {
     console.log('database connected', config.DB_URL);
 }).catch((error) => {
     console.log('Error connecting to DB=================');

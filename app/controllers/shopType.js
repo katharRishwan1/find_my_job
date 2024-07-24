@@ -2,12 +2,12 @@ const { roleNames } = require('../config/config');
 const responseMessages = require('../middlewares/response-messages');
 const db = require('../model');
 const { errorHandlerFunction } = require('../services/common_service1');
-const validator = require('../validator/role')
+const validator = require('../validator/shopType')
 module.exports = {
     post: async (req, res) => {
         try {
 
-            const { error } = await validator.validateCreateRole(req.body)
+            const { error } = await validator.validateCreate(req.body)
             if (error) {
                 return res.clientError({
                     msg: error
@@ -15,21 +15,21 @@ module.exports = {
             }
 
             const name = req.body.name
-            const checkExists = await db.role.findOne({ name, isDeleted: false })
+            const checkExists = await db.shopType.findOne({ name, isDeleted: false })
             if (checkExists) {
                 return res.clientError({
-                    msg: `Similar role Name already exists..`,
+                    msg: `Similar Shop type Name already exists..`,
                 })
             }
-            const data = await db.role.create(req.body)
+            const data = await db.shopType.create(req.body)
             if (data && data._id) {
                 return res.success({
-                    msg: 'Role created',
+                    msg: 'Shop type created',
                     result: data,
                 })
             }
             return res.clientError({
-                msg: 'Role Creation Failed',
+                msg: 'Shop type Creation Failed',
             })
         } catch (error) {
             errorHandlerFunction(res, error)
@@ -45,7 +45,7 @@ module.exports = {
             }
             if (_id) {
                 filter._id = _id
-                const data = await db.role.findOne(filter)
+                const data = await db.shopType.findOne(filter)
                 if (data) {
                     return res.success({
                         msg: responseMessages[1008],
@@ -62,7 +62,7 @@ module.exports = {
             if (sortBy === 'oldest') sort = { createdAt: 1 }
             else if (sortBy === 'latest') sort = { createdAt: -1 }
 
-            const getRoles = await db.role.find(filter).sort(sort)
+            const getRoles = await db.shopType.find(filter).sort(sort)
 
             if (!getRoles.length) {
                 return res.success({
@@ -71,7 +71,7 @@ module.exports = {
                 })
             }
             return res.success({
-                msg: 'Role Data Fetched',
+                msg: 'Shop type Data Fetched',
                 result: getRoles,
             })
         } catch (error) {
@@ -82,7 +82,7 @@ module.exports = {
         try {
             const _id = req.params.id;
 
-            const { error } = await validator.validateUpdateRole(req.body)
+            const { error } = await validator.validateUpdate(req.body)
             if (error) {
                 return res.clientError({
                     msg: error
@@ -90,27 +90,27 @@ module.exports = {
             }
 
             const filterQuery = { isDeleted: false, _id };
-            const checkEixsts = await db.role.findOne(filterQuery);
+            const checkEixsts = await db.shopType.findOne(filterQuery);
             if (!checkEixsts) {
                 return res.clientError({
-                    msg: 'Role Not Found..!'
+                    msg: 'Shop type Not Found..!'
                 });
             };
-            const checkUnique = await db.role.findOne({ _id: { $ne: _id }, name: req?.body?.name, isDeleted: false });
+            const checkUnique = await db.shopType.findOne({ _id: { $ne: _id }, name: req?.body?.name, isDeleted: false });
             if (checkUnique) {
                 return res.clientError({
-                    msg: `${checkUnique.name} this type of role is Already taken`
+                    msg: `${checkUnique.name} this type of Shop type is Already taken`
                 });
             };
-            const data = await db.role.updateOne(filterQuery, req.body);
+            const data = await db.shopType.updateOne(filterQuery, req.body);
             if (data.modifiedCount) {
                 return res.success({
                     result: data,
-                    msg: 'Role Updated Successfully..!'
+                    msg: 'Shop type Updated Successfully..!'
                 })
             };
             return res.clientError({
-                msg: 'Role Update Failed...!'
+                msg: 'Shop type Update Failed...!'
             });
         } catch (error) {
             errorHandlerFunction(error)
@@ -119,21 +119,21 @@ module.exports = {
     delete: async (req, res) => {
         try {
             const filterQuery = { _id: req.params.id, isDeleted: false };
-            const checkEixst = await db.role.findOne(filterQuery);
+            const checkEixst = await db.shopType.findOne(filterQuery);
             if (!checkEixst) {
                 return res.clientError({
-                    msg: 'Role Not Found..!'
+                    msg: 'Shop type Not Found..!'
                 });
             };
-            const data = await db.role.updateOne(filterQuery, { isDeleted: true });
+            const data = await db.shopType.updateOne(filterQuery, { isDeleted: true });
             if (data.modifiedCount) {
                 return res.success({
                     result: data,
-                    msg: 'Role Deleted Successfully..!'
+                    msg: 'Shop type Deleted Successfully..!'
                 })
             };
             return res.clientError({
-                msg: 'Role Delete Failed...!'
+                msg: 'Shop type Delete Failed...!'
             });
         } catch (error) {
             errorHandlerFunction(error)
@@ -142,7 +142,7 @@ module.exports = {
     status: async (req, res) => {
         try {
             const id = req.params.id
-            const data = await db.role.findOne({ _id: id, isDeleted: false })
+            const data = await db.shopType.findOne({ _id: id, isDeleted: false })
             if (!data) {
                 return res.clientError({
                     msg: "Data not found"
@@ -153,7 +153,7 @@ module.exports = {
             data.status = status
             await data.save()
             return res.success({
-                msg: 'Role status updated',
+                msg: 'Shop type status updated',
             })
         } catch (error) {
             errorHandlerFunction(res, error)

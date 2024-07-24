@@ -29,7 +29,8 @@ const responseMessages = {
     1030: 'Verified successfully, please reset your password',
     1031: 'Forgot request successfully please check your Email',
     1032: 'Data Updated Successfully',
-    1033: 'Data Deleted Successfully'
+    1033: 'Data Deleted Successfully',
+    1034: 'Data Update Failed'
 };
 
 module.exports = responseMessages;

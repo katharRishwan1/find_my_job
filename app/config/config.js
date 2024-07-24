@@ -19,18 +19,10 @@ const envConfigs = {
     installmentUrl: process.env.PAYMENT_INSTALLMENT_URL,
     joinChitUrl: process.env.JOIN_CHIT_URL,
     roleNames: {
-        gus: 'GUEST',
-        cus: 'CUSTOMER',
-        mn: 'MANAGER',
+
         ad: 'ADMIN',
-        ce: 'COLLECTION_EXECUTIVE',
-        hod: 'FRONT_DESK',
-        ved: 'VENDOR',
-        fd: 'FRONT_DESK',
-        sa: 'SUPER_ADMIN',
-        ps: 'PAYMENT_SETTLEMENTOR',
-        sm: 'SETTLEMENT_MANAGER',
-        fm:'FINANCE_MANAGER'
+        jb: 'JOBSEEKER',
+        own: 'OWNER'
     },
     awsBucketName: process.env.AWS_BUCKET_NAME,
     awsAccessKey: process.env.AWS_ACCESS_KEY,

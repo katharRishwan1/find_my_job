@@ -9,67 +9,67 @@ const { redisAndToken } = require('../services/redis_token');
 
 module.exports = {
     signin: async (req, res) => {
-        try{
-            const { email,password,device_id, ip} = req.body;
-            const filterQuery = { isDeleted: false,email };
-            const checkExist = await db.user.findOne(filterQuery).populate('role','name');
-            if(!checkExist){
+        try {
+            const { email, password, device_id, ip } = req.body;
+            const filterQuery = { isDeleted: false, email };
+            const checkExist = await db.user.findOne(filterQuery).populate('role', 'name');
+            if (!checkExist) {
                 return res.clientError({
-                    msg:responseMessages[1009]
+                    msg: responseMessages[1009]
                 })
             };
             const passwordIsValid = bcrypt.compareSync(password, checkExist.password);
             if (!passwordIsValid) {
                 return res.clientError({ msg: responseMessages[1009] });
             };
-            if (!device_id && !ip) return res.clientError({ msg:responseMessages[1020]  });
+            if (!device_id && !ip) return res.clientError({ msg: responseMessages[1020] });
             const tokens = await redisAndToken(
                 checkExist._id.toString(),
                 device_id,
                 ip,
                 checkExist.role.name,
                 checkExist.role._id.toString(),
-            );  
+            );
             // console.log('tokens---------', tokens);
             const userDetails = {
-                firstName:checkExist.firstName,
-                lastName:checkExist.lastName,
-                email:checkExist.email,
-                role:checkExist.role,
+                firstName: checkExist.firstName,
+                lastName: checkExist.lastName,
+                email: checkExist.email,
+                role: checkExist.role,
                 mobile: checkExist.mobile,
-            };            
+            };
             return res.success({
-                msg:responseMessages[1021],
-                result:{
+                msg: responseMessages[1021],
+                result: {
                     tokens,
                     userDetails
                 }
             });
-        } catch (error){
+        } catch (error) {
             console.log('error-----', error);
             errorHandlerFunction(error)
         }
     },
     signup: async (req, res) => {
-        try{
-            const { email, firstName, lastName, role,mobile} = req.body;
-            const filterQuery = { isDeleted: false,$or:[{email,mobile}]};
+        try {
+            const { email, firstName, lastName, role, mobile } = req.body;
+            const filterQuery = { isDeleted: false, $or: [{ email, mobile }] };
             const checkEixst = await db.user.findOne(filterQuery);
-            if(checkEixst){
+            if (checkEixst) {
                 return res.clientError({
-                    msg:responseMessages[1014]
+                    msg: responseMessages[1014]
                 })
             };
-            req.body.password = await bcrypt.hashSync(req.body.password,8)
+            req.body.password = await bcrypt.hashSync(req.body.password, 8)
             const data = await db.user.create(req.body);
-            if(data){
+            if (data) {
                 return res.success({
-                    msg:responseMessages[1022],
-                    result:data
+                    msg: responseMessages[1022],
+                    result: data
                 });
             };
             return res.clientError({
-                msg:responseMessages[1018]
+                msg: responseMessages[1018]
             });
         } catch (error) {
             console.log('error------', error);
@@ -78,7 +78,7 @@ module.exports = {
     },
     sendOtp: async (req, res) => {
         try {
-            const { mobile, name } = req.body;
+            const { mobile } = req.body;
             const filterQuery = { isDeleted: false }
             let isMobile = false;
             const num = Number(mobile)
@@ -93,7 +93,7 @@ module.exports = {
             const checkExist = await db.user.findOne(filterQuery);
             if (!checkExist) {
                 return res.clientError({
-                    msg:responseMessages[1013]
+                    msg: responseMessages[1013]
                 })
             }
             const randomNumber = Math.floor(100000 + Math.random() * 900000);
@@ -108,9 +108,9 @@ module.exports = {
             if (checkOtp) {
                 const data = await db.otp.updateOne({ mobile: mobile }, otpCreate);
                 if (data.modifiedCount) {
-                    if(isMobile){
+                    if (isMobile) {
                         await sendSMS(mobile, message);
-                    }else {
+                    } else {
                         await sendEmail(mobile, message);
                     };
                     return res.success({
@@ -124,9 +124,9 @@ module.exports = {
                 console.log('otpcrrate-------', otpCreate);
                 const updateOtp = await db.otp.create(otpCreate)
                 console.log('updateOtp-----------', updateOtp);
-                if(isMobile){
+                if (isMobile) {
                     await sendSMS(mobile, message);
-                }else {
+                } else {
                     await sendEmail(mobile, message);
                 };
                 if (updateOtp) {
@@ -169,7 +169,7 @@ module.exports = {
             };
             const checkExist = await db.user.findOne(filterQuery).populate('role', 'name')
             if (!checkExist) {
-                return res.clientError({ msg: responseMessages[1013]});
+                return res.clientError({ msg: responseMessages[1013] });
             }
             const checkOtp = await db.otp.findOne({ mobile, code: otp });
             if (!checkOtp && otp != '123456') {
@@ -192,15 +192,15 @@ module.exports = {
                 checkExist.role ? checkExist.role._id.toString() : 'GUEST',
             );
             const userDetails = {
-                firstName:checkExist.firstName,
-                lastName:checkExist.lastName,
-                email:checkExist.email,
-                role:checkExist.role,
+                firstName: checkExist.firstName,
+                lastName: checkExist.lastName,
+                email: checkExist.email,
+                role: checkExist.role,
                 mobile: checkExist.mobile,
-            };            
+            };
             return res.success({
-                msg:responseMessages[1021],
-                result:{
+                msg: responseMessages[1021],
+                result: {
                     tokens,
                     userDetails
                 }
@@ -236,7 +236,7 @@ module.exports = {
                 msg: responseMessages[1024]
             });
         } catch (error) {
-            console.log('error----',error);
+            console.log('error----', error);
             errorHandlerFunction(error)
         }
     },
@@ -290,9 +290,9 @@ module.exports = {
                 }
                 const response = await db.resetPassword.create(resetUserPassword);
                 if (response) {
-                    const userName = existsUser.firstName? existsUser.firstName: 'User'
+                    const userName = existsUser.firstName ? existsUser.firstName : 'User'
                     const message = `Dear ${userName}, Your OTP for ${'forgot password'} portal is : ${OTP}. Don't share with any one - Aim Window`
-                    
+
                     const otpSend = await sendSMS(value, message);
                     const checkotp = await sendOTP(value);
                     if (otpSend.data.status == false || otpSend.data.code == '007') {
