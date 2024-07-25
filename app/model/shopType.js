@@ -3,7 +3,7 @@ const { mongoose } = require("../services/imports");
 module.exports = mongoose.model(
     'shop_type',
     new mongoose.Schema({
-        name: String,
+        name: { type: String, uppercase: true },
         description: String,
         img_url: String,
         status: { type: String, enum: ['active', 'inactive'], default: 'active' },
