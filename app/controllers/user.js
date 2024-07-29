@@ -220,4 +220,84 @@ module.exports = {
             errorHandlerFunction(res, error)
         }
     },
+    pincode: async (req, res) => {
+        try {
+            const id = req.params.id
+            const filter = { stateName: 'TAMIL NADU' }
+            const { district, pincode, search } = req.query
+            if (id) {
+                filter._id = id
+                const data = await db.pincode.findOne(filter)
+                if (data) {
+                    return res.success({
+                        msg: 'Location data fetched successfully..!',
+                        result: {
+                            _id: data._id,
+                            areaName: data.officeName.replace(
+                                /\s(?:SO|BO|B.O|S.O|S.O.|H.O|S. O|HO)$/,
+                                '',
+                            ),
+                            district: data.district,
+                            state: data.stateName,
+                            pincode: data.pincode,
+                        },
+                    })
+                }
+                return res.clientError({
+                    msg: 'Invalid location..!',
+                })
+            }
+            if (search) {
+                const searchRegex = new RegExp(search, 'i')
+                const searchCriteria = [
+                    { stateName: { $regex: searchRegex } },
+                    { district: { $regex: searchRegex } },
+                    { officeName: { $regex: searchRegex } },
+                    { pincode: { $regex: searchRegex } },
+                ]
+                filter.$or = searchCriteria
+            }
+            if (pincode) {
+                const regex = new RegExp(pincode.replace(/\s/g, ''), 'i')
+                filter.pincode = regex
+            }
+            if (district) {
+                const regex = new RegExp(district.toUpperCase().replace(/\s/g, ''), 'i')
+                filter.district = regex
+            }
+            let getData = await db.pincode.find(filter).limit(50)
+            console.log(getData.length, 'length----')
+            if (getData.length) {
+                getData = getData.map((val) => {
+                    const capitalize = (value) => {
+                        return value.toLowerCase().replace(/(?:^|\s)\S/g, function (a) {
+                            return a.toUpperCase()
+                        })
+                    }
+                    return {
+                        _id: val._id,
+                        areaName: capitalize(
+                            val.officeName.replace(
+                                /\s(?:SO|BO|B.O|S.O|S.O.|H.O|S. O|HO)$/,
+                                '',
+                            ),
+                        ),
+                        district: capitalize(val.district),
+                        state: capitalize(val.stateName),
+                        pincode: val.pincode,
+                    }
+                })
+                return res.success({
+                    result: getData,
+                    msg: 'Locations fetched successfully',
+                })
+            }
+            return res.clientError({
+                msg: 'Invalid location',
+            })
+        } catch (error) {
+            errorHandlerFunction(res, error)
+        }
+    },
+
 }

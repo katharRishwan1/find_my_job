@@ -2,34 +2,45 @@ const { roleNames } = require('../config/config');
 const responseMessages = require('../middlewares/response-messages');
 const db = require('../model');
 const { errorHandlerFunction } = require('../services/common_service1');
-const validator = require('../validator/jobType')
+const { bcrypt } = require('../services/imports');
+const validator = require('../validator/shopType')
 module.exports = {
     post: async (req, res) => {
         try {
 
-            const { error } = await validator.validateCreate(req.body)
-            if (error) {
-                return res.clientError({
-                    msg: error
-                })
-            }
+            const filterArray = [{ mobile: req.body.mobile }]
+            if (req.body.email) filterArray.push({ email: req.body.email })
 
-            const checkExists = await db.jobType.findOne({ shopType: req.body?.shopType, name: req.body?.name, isDeleted: false })
+            const checkExists = await db.user.findOne({ isDeleted: false, $or: filterArray })
             if (checkExists) {
-                return res.clientError({
-                    msg: `Similar Job type Name already exists..`,
-                })
+                return res.clientError({ msg: responseMessages[1014] })
             }
-            const data = await db.jobType.create(req.body)
-            if (data && data._id) {
-                return res.success({
-                    msg: 'Job type created',
-                    result: data,
+            const getRole = await db.role.findOne({ name: roleNames.own, isDeleted: false })
+
+            const hashedPassword = await bcrypt.hashSync(req.body.password, 8)
+            req.body.password = hashedPassword
+            req.body.role = getRole._id.toString()
+            req.body.createdBy = req.decoded.user_id
+
+            const data = await db.user.create(req.body)
+            if (data) {
+
+                req.body.owner = data._id
+                const shop = await db.shop.create(req.body)
+                if (shop) {
+                    return res.success({
+                        msg: 'Shop type created',
+                        result: shop,
+                    })
+                }
+                return res.clientError({
+                    msg: 'Shop type Creation Failed',
                 })
             }
             return res.clientError({
-                msg: 'Job type Creation Failed',
+                msg: 'Shop Creation Failed..!',
             })
+
         } catch (error) {
             errorHandlerFunction(res, error)
         }
@@ -37,14 +48,19 @@ module.exports = {
     get: async (req, res) => {
         try {
             const _id = req.params.id
-            const { shopType, search, sortBy } = req.query
+            const { search, sortBy } = req.query
             const filter = { isDeleted: false, status: 'active' }
             if (req.decoded.roleType === roleNames.ad) {
                 delete filter.status
             }
+            const populateValue = [
+                { path: "owner", select: 'firstName lastName email mobile img_url' },
+                { path: 'shopType', select: 'name' },
+                { path: 'jobType', select: 'name' }
+            ]
             if (_id) {
                 filter._id = _id
-                const data = await db.jobType.findOne(filter).populate('shopType', 'name')
+                const data = await db.shop.findOne(filter).populate(populateValue)
                 if (data) {
                     return res.success({
                         msg: responseMessages[1008],
@@ -61,10 +77,7 @@ module.exports = {
             if (sortBy === 'oldest') sort = { createdAt: 1 }
             else if (sortBy === 'latest') sort = { createdAt: -1 }
 
-            if (shopType) filter.shopType = shopType
-
-            const getRoles = await db.jobType.find(filter).populate('shopType', 'name').sort(sort)
-
+            const getRoles = await db.shop.find(filter).populate(populateValue).sort(sort)
             if (!getRoles.length) {
                 return res.success({
                     msg: responseMessages[1012],
@@ -72,7 +85,7 @@ module.exports = {
                 })
             }
             return res.success({
-                msg: 'Job type Data Fetched',
+                msg: 'Shop Data Fetched',
                 result: getRoles,
             })
         } catch (error) {
@@ -91,27 +104,27 @@ module.exports = {
             }
 
             const filterQuery = { isDeleted: false, _id };
-            const checkEixsts = await db.jobType.findOne(filterQuery);
+            const checkEixsts = await db.shopType.findOne(filterQuery);
             if (!checkEixsts) {
                 return res.clientError({
-                    msg: 'Job type Not Found..!'
+                    msg: 'Shop type Not Found..!'
                 });
             };
-            const checkUnique = await db.jobType.findOne({ _id: { $ne: _id }, name: req?.body?.name, isDeleted: false });
+            const checkUnique = await db.shopType.findOne({ _id: { $ne: _id }, name: req?.body?.name, isDeleted: false });
             if (checkUnique) {
                 return res.clientError({
-                    msg: `${checkUnique.name} this type of Job type is Already taken`
+                    msg: `${checkUnique.name} this type of Shop type is Already taken`
                 });
             };
-            const data = await db.jobType.updateOne(filterQuery, req.body);
+            const data = await db.shopType.updateOne(filterQuery, req.body);
             if (data.modifiedCount) {
                 return res.success({
                     result: data,
-                    msg: 'Job type Updated Successfully..!'
+                    msg: 'Shop type Updated Successfully..!'
                 })
             };
             return res.clientError({
-                msg: 'Job type Update Failed...!'
+                msg: 'Shop type Update Failed...!'
             });
         } catch (error) {
             errorHandlerFunction(error)
@@ -120,21 +133,21 @@ module.exports = {
     delete: async (req, res) => {
         try {
             const filterQuery = { _id: req.params.id, isDeleted: false };
-            const checkEixst = await db.jobType.findOne(filterQuery);
+            const checkEixst = await db.shopType.findOne(filterQuery);
             if (!checkEixst) {
                 return res.clientError({
-                    msg: 'Job type Not Found..!'
+                    msg: 'Shop type Not Found..!'
                 });
             };
-            const data = await db.jobType.updateOne(filterQuery, { isDeleted: true });
+            const data = await db.shopType.updateOne(filterQuery, { isDeleted: true });
             if (data.modifiedCount) {
                 return res.success({
                     result: data,
-                    msg: 'Job type Deleted Successfully..!'
+                    msg: 'Shop type Deleted Successfully..!'
                 })
             };
             return res.clientError({
-                msg: 'Job type Delete Failed...!'
+                msg: 'Shop type Delete Failed...!'
             });
         } catch (error) {
             errorHandlerFunction(error)
@@ -143,7 +156,7 @@ module.exports = {
     status: async (req, res) => {
         try {
             const id = req.params.id
-            const data = await db.jobType.findOne({ _id: id, isDeleted: false })
+            const data = await db.shopType.findOne({ _id: id, isDeleted: false })
             if (!data) {
                 return res.clientError({
                     msg: "Data not found"
@@ -154,7 +167,7 @@ module.exports = {
             data.status = status
             await data.save()
             return res.success({
-                msg: 'Job type status updated',
+                msg: 'Shop type status updated',
             })
         } catch (error) {
             errorHandlerFunction(res, error)
