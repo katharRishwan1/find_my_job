@@ -7,4 +7,5 @@ router.get('/user/:id?', user.getUser);
 router.put('/user/:id', user.updateUser);
 // router.delete('/role/:id', role.delete);
 // router.post('/role-status/:id', role.status
+router.get('/pincode', user.pincode)
 module.exports = router
