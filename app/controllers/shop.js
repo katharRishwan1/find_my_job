@@ -26,6 +26,9 @@ module.exports = {
             if (data) {
 
                 req.body.owner = data._id
+                if (req.decoded.rolType === roleNames.ad) {
+                    req.body.approveStatus = 'approved'
+                }
                 const shop = await db.shop.create(req.body)
                 if (shop) {
                     return res.success({
