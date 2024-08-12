@@ -1,3 +1,4 @@
+const { roleNames, enviroment } = require('../config/config');
 const responseMessages = require('../middlewares/response-messages');
 const db = require('../model');
 const { errorHandlerFunction } = require('../services/common_service1');
@@ -90,15 +91,15 @@ module.exports = {
             } else {
                 filterQuery.email = mobile
             }
+
             const checkExist = await db.user.findOne(filterQuery);
             if (!checkExist) {
                 return res.clientError({
-                    msg: responseMessages[1013]
+                    msg: "User Not Found"
                 })
             }
             const randomNumber = Math.floor(100000 + Math.random() * 900000);
-            const userName = checkExist && checkExist.name ? checkExist.name : 'User';
-            const concept = 'checking'
+            const userName = checkExist && checkExist.firstName ? checkExist.firstName : 'User';
             const message = `Dear ${userName}, Your OTP for ${'login'} portal is : ${randomNumber}. Don't share with any one - Aim Window`
             const otpCreate = {
                 mobile,
@@ -139,23 +140,201 @@ module.exports = {
                 })
             }
         } catch (error) {
-            console.log('error-', error);
-            if (error.status) {
-                if (error.status < 500) {
-                    return res.clientError({
-                        ...error.error,
-                        statusCode: error.status,
-                    });
-                }
-                return res.internalServerError({ ...error.error });
-            }
-            return res.internalServerError({ error });
+            errorHandlerFunction(res, error)
         }
 
     },
+    ownerSendOtp: async (req, res) => {
+        try {
+            const { mobile } = req.body
+            let isMobile = false
+
+            const num = Number(mobile)
+            if (num) {
+                isMobile = true
+            }
+            const filterQuery = { isDeleted: false }
+
+            if (isMobile) {
+                filterQuery.mobile = mobile.toString()
+            } else {
+                filterQuery.email = mobile
+            }
+            const checkExist = await db.user.findOne(filterQuery)
+            if (!checkExist) {
+                const createData = {}
+                if (isMobile) {
+                    createData.mobile = mobile.toString()
+                } else {
+                    createData.email = mobile
+                }
+                const findRole = await db.role.findOne({
+                    name: roleNames.own,
+                    isDeleted: false,
+                })
+                createData.role = findRole._id
+                const data = await db.user.create(createData)
+                if (!data) {
+                    return res.clientError({
+                        msg: 'something went wrong',
+                    })
+                }
+            }
+            let randomNumber
+            if (enviroment === 'production') {
+                randomNumber = Math.floor(100000 + Math.random() * 900000)
+            }
+            if (enviroment !== 'production') {
+                randomNumber = 123456
+            }
+            const userName = checkExist && checkExist.firstName ? checkExist.firstName : 'User'
+            const message = `Dear ${userName}, Your OTP for ${'login'} portal is: ${randomNumber}.Don't share with any one `
+            const otpCreate = {
+                mobile,
+                code: randomNumber,
+            }
+
+            if (!isMobile) {
+                const title = 'sending otp to email for verification'
+                await sendEmail(mobile, title, message)
+            } else {
+                if (enviroment === 'production') {
+                    const resp = await sendSMS(mobile, message)
+                    console.log('resp--------------------', resp)
+                    if (resp.data.status === false || resp.data.code === '007') {
+                        return res.clientError({ msg: resp.data.description })
+                    }
+                }
+            }
+
+            const checkOtp = await db.otp.findOne({ mobile })
+            if (checkOtp) {
+                const data = await db.otp.updateOne({ mobile }, otpCreate)
+                if (enviroment === 'production' && data.modifiedCount) {
+                    return res.success({
+                        msg: responseMessages[1015],
+                    })
+                }
+                if (data) {
+                    return res.success({
+                        msg: responseMessages[1015],
+                    })
+                }
+                return res.clientError({
+                    msg: responseMessages[1019],
+                })
+            } else {
+                const updateOtp = await db.otp.create(otpCreate)
+                if (updateOtp) {
+                    return res.success({
+                        msg: responseMessages[1015],
+                    })
+                }
+                return res.clientError({
+                    msg: responseMessages[1018],
+                })
+            }
+        } catch (error) {
+            errorHandlerFunction(res, error)
+        }
+    },
+    jobseekerSendOtp: async (req, res) => {
+        try {
+            const { mobile } = req.body
+            let isMobile = false
+
+            const num = Number(mobile)
+            if (num) {
+                isMobile = true
+            }
+            const filterQuery = { isDeleted: false }
+
+            if (isMobile) {
+                filterQuery.mobile = mobile.toString()
+            } else {
+                filterQuery.email = mobile
+            }
+            const checkExist = await db.user.findOne(filterQuery)
+            if (!checkExist) {
+                const createData = {}
+                if (isMobile) {
+                    createData.mobile = mobile.toString()
+                } else {
+                    createData.email = mobile
+                }
+                const findRole = await db.role.findOne({
+                    name: roleNames.jb,
+                    isDeleted: false,
+                })
+                createData.role = findRole._id
+                const data = await db.user.create(createData)
+                if (!data) {
+                    return res.clientError({
+                        msg: 'something went wrong',
+                    })
+                }
+            }
+            let randomNumber
+            if (enviroment === 'production') {
+                randomNumber = Math.floor(100000 + Math.random() * 900000)
+            }
+            if (enviroment !== 'production') {
+                randomNumber = 123456
+            }
+            const userName = checkExist && checkExist.firstName ? checkExist.firstName : 'User'
+            const message = `Dear ${userName}, Your OTP for ${'login'} portal is: ${randomNumber}.Don't share with any one `
+            const otpCreate = {
+                mobile,
+                code: randomNumber,
+            }
+
+            if (!isMobile) {
+                const title = 'sending otp to email for verification'
+                await sendEmail(mobile, title, message)
+            } else {
+                if (enviroment === 'production') {
+                    const resp = await sendSMS(mobile, message)
+                    console.log('resp--------------------', resp)
+                    if (resp.data.status === false || resp.data.code === '007') {
+                        return res.clientError({ msg: resp.data.description })
+                    }
+                }
+            }
+
+            const checkOtp = await db.otp.findOne({ mobile })
+            if (checkOtp) {
+                const data = await db.otp.updateOne({ mobile }, otpCreate)
+                if (enviroment === 'production' && data.modifiedCount) {
+                    return res.success({
+                        msg: responseMessages[1015],
+                    })
+                }
+                if (data) {
+                    return res.success({
+                        msg: responseMessages[1015],
+                    })
+                }
+                return res.clientError({
+                    msg: responseMessages[1019],
+                })
+            } else {
+                const updateOtp = await db.otp.create(otpCreate)
+                if (updateOtp) {
+                    return res.success({
+                        msg: responseMessages[1015],
+                    })
+                }
+                return res.clientError({
+                    msg: responseMessages[1018],
+                })
+            }
+        } catch (error) {
+            errorHandlerFunction(res, error)
+        }
+    },
     verifyOtp: async (req, res) => {
         try {
-            let { otp, mobile, device_id, ip, fcm_token } = req.body;
+            let { otp, mobile, device_id, ip, } = req.body;
             const num = Number(mobile)
             let isMobile = false;
             if (num) {
@@ -171,16 +350,16 @@ module.exports = {
             if (!checkExist) {
                 return res.clientError({ msg: responseMessages[1013] });
             }
+            if (!checkExist.verified) {
+                checkExist.verified = true
+                await checkExist.save()
+            }
+
             const checkOtp = await db.otp.findOne({ mobile, code: otp });
             if (!checkOtp && otp != '123456') {
                 return res.clientError({
                     msg: 'otp is incorrect'
                 })
-            };
-
-            if (fcm_token && device_id) {
-                const fcmCreate = { device_id, fcm_token, user_id: checkExist._id.toString() }
-                await db.fcm.create(fcmCreate);
             };
             if (!device_id) device_id = '123';
             if (!ip) ip = '3523'
@@ -188,8 +367,8 @@ module.exports = {
                 checkExist._id.toString(),
                 device_id,
                 ip,
-                checkExist.role ? checkExist.role.name : 'GUEST',
-                checkExist.role ? checkExist.role._id.toString() : 'GUEST',
+                checkExist.role.name,
+                checkExist.role._id.toString()
             );
             const userDetails = {
                 firstName: checkExist.firstName,

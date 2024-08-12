@@ -14,14 +14,14 @@ module.exports = mongoose.model(
             type: Boolean,
             default: false,
         },
-        mobileVerified: {
-            type: Boolean,
-            default: false,
-        },
-        emailVerified: {
-            type: Boolean,
-            default: false,
-        },
+        // mobileVerified: {
+        //     type: Boolean,
+        //     default: false,
+        // },
+        // emailVerified: {
+        //     type: Boolean,
+        //     default: false,
+        // },
         coverImage: String,
         createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'user' },
         lastLogin: { type: Date, default: Date.now },

@@ -42,8 +42,6 @@ module.exports = {
             const { perPage, currentPage, role, search, sortBy } = req.query
             const select = {
                 password: 0,
-                mobileVerified: 0,
-                emailVerified: 0,
                 isDeleted: 0,
                 createdAt: 0,
                 updatedAt: 0,
@@ -294,6 +292,31 @@ module.exports = {
             }
             return res.clientError({
                 msg: 'Invalid location',
+            })
+        } catch (error) {
+            errorHandlerFunction(res, error)
+        }
+    },
+    profileGet: async (req, res) => {
+        try {
+            const _id = req.params.id || req.decoded.user_id
+            const filterQuery = { isDeleted: false }
+            filterQuery._id = _id
+            const unNecessaryFields = {
+                password: 0,
+                isDeleted: 0,
+                createdAt: 0,
+                updatedAt: 0,
+            }
+            const result = await db.user.findOne(filterQuery, unNecessaryFields).populate('role', 'name')
+            if (!result) {
+                return res.success({
+                    msg: responseMessages[1012],
+                })
+            }
+            return res.success({
+                msg: responseMessages[1008],
+                result,
             })
         } catch (error) {
             errorHandlerFunction(res, error)

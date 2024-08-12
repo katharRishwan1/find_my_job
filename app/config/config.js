@@ -19,7 +19,6 @@ const envConfigs = {
     installmentUrl: process.env.PAYMENT_INSTALLMENT_URL,
     joinChitUrl: process.env.JOIN_CHIT_URL,
     roleNames: {
-
         ad: 'ADMIN',
         jb: 'JOBSEEKER',
         own: 'OWNER'

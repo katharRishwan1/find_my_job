@@ -5,7 +5,7 @@ const { errorHandlerFunction } = require('../services/common_service1');
 const { bcrypt } = require('../services/imports');
 const validator = require('../validator/shopType')
 module.exports = {
-    post: async (req, res) => {
+    adminShopCreate: async (req, res) => {
         try {
 
             const filterArray = [{ mobile: req.body.mobile }]
@@ -24,8 +24,8 @@ module.exports = {
 
             const data = await db.user.create(req.body)
             if (data) {
-
                 req.body.owner = data._id
+                req.body.approveStatus = 'approved'
                 const shop = await db.shop.create(req.body)
                 if (shop) {
                     return res.success({
@@ -41,6 +41,37 @@ module.exports = {
                 msg: 'Shop Creation Failed..!',
             })
 
+        } catch (error) {
+            errorHandlerFunction(res, error)
+        }
+    },
+    ownerOnboarding: async (req, res) => {
+        try {
+            const checkExist = await db.user.findOne({ _id: req.decoded.user_id })
+            if (!checkExist) {
+                return res.clientError({
+                    msg: "User Not Found..!"
+                })
+            }
+
+            checkExist.firstName = req.body.firstName
+            checkExist.lastName = req.body.lastName
+            checkExist.img_url = req.body.img_url
+            checkExist.email = req.body.email
+            checkExist.password = await bcrypt.hashSync(req.body.password, 8)
+            await checkExist.save()
+
+            req.body.owner = checkExist._id
+            const shop = await db.shop.create(req.body)
+            if (shop) {
+                return res.success({
+                    msg: 'Shop type created',
+                    result: shop,
+                })
+            }
+            return res.clientError({
+                msg: 'Shop type Creation Failed',
+            })
         } catch (error) {
             errorHandlerFunction(res, error)
         }
@@ -71,11 +102,15 @@ module.exports = {
                     msg: responseMessages[1012],
                 })
             }
+            if (req.decoded.roleType === roleNames.own) {
+                filter.owner = req.decoded.user_id
+            }
             if (search) filter.name = { $regex: search, $options: 'i' }
 
             let sort = { createdAt: -1 }
             if (sortBy === 'oldest') sort = { createdAt: 1 }
             else if (sortBy === 'latest') sort = { createdAt: -1 }
+
 
             const getRoles = await db.shop.find(filter).populate(populateValue).sort(sort)
             if (!getRoles.length) {
