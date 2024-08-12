@@ -20,6 +20,12 @@ module.exports = {
                     msg: `Similar Job type Name already exists..`,
                 })
             }
+
+
+            if (req.decoded.roleType === roleNames.ad) {
+                req.body.isAdmin = true
+            }
+
             const data = await db.jobType.create(req.body)
             if (data && data._id) {
                 return res.success({

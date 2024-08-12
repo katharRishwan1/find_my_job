@@ -25,6 +25,7 @@ module.exports = mongoose.model(
                 from: String,
                 to: String
             },
+            socialMediaLinks: [String],
             status: { type: String, enum: ['active', 'inactive'], default: 'active' },
             approveStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
             createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'user' },

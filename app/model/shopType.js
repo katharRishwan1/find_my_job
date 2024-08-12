@@ -6,7 +6,7 @@ module.exports = mongoose.model(
         name: { type: String, uppercase: true },
         description: String,
         img_url: String,
-        isAdmin: { type: Boolean },
+        isAdmin: { type: Boolean, default: false },
         status: { type: String, enum: ['active', 'inactive'], default: 'active' },
         isDeleted: { type: Boolean, default: false },
     }, { timestamps: true, versionKey: false }),

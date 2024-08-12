@@ -21,6 +21,11 @@ module.exports = {
                     msg: `Similar Shop type Name already exists..`,
                 })
             }
+
+            if (req.decoded.roleType === roleNames.ad) {
+                req.body.isAdmin = true
+            }
+
             const data = await db.shopType.create(req.body)
             if (data && data._id) {
                 return res.success({

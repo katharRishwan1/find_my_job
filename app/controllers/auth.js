@@ -347,13 +347,14 @@ module.exports = {
                 filterQuery.email = mobile
             };
             const checkExist = await db.user.findOne(filterQuery).populate('role', 'name')
-            if (checkExist.role.name !== roleNames.ad && checkExist.mobileVerified === false) {
-                checkExist.mobileVerified = true
-                await checkExist.save()
-            }
             if (!checkExist) {
                 return res.clientError({ msg: responseMessages[1013] });
             }
+            if (!checkExist.verified) {
+                checkExist.verified = true
+                await checkExist.save()
+            }
+
             const checkOtp = await db.otp.findOne({ mobile, code: otp });
             if (!checkOtp && otp != '123456') {
                 return res.clientError({
