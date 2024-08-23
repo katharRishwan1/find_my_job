@@ -3,9 +3,9 @@ const responseMessages = require('../middlewares/response-messages');
 const db = require('../model');
 const { errorHandlerFunction } = require('../services/common_service1');
 const { bcrypt } = require('../services/imports');
-const validator = require('../validator/shopType')
+const validator = require('../validator/owner')
 module.exports = {
-    adminShopCreate: async (req, res) => {
+    adminownerCreate: async (req, res) => {
         try {
 
             const filterArray = [{ mobile: req.body.mobile }]
@@ -20,25 +20,16 @@ module.exports = {
             const hashedPassword = await bcrypt.hashSync(req.body.password, 8)
             req.body.password = hashedPassword
             req.body.role = getRole._id.toString()
-            req.body.createdBy = req.decoded.user_id
 
             const data = await db.user.create(req.body)
             if (data) {
-                req.body.owner = data._id
-                req.body.approveStatus = 'approved'
-                const shop = await db.shop.create(req.body)
-                if (shop) {
-                    return res.success({
-                        msg: 'Shop type created',
-                        result: shop,
-                    })
-                }
-                return res.clientError({
-                    msg: 'Shop type Creation Failed',
+                return res.success({
+                    msg: 'Signup success..!',
+                    result: data
                 })
             }
             return res.clientError({
-                msg: 'Shop Creation Failed..!',
+                msg: 'owner Creation Failed..!',
             })
 
         } catch (error) {
@@ -62,15 +53,15 @@ module.exports = {
             await checkExist.save()
 
             req.body.owner = checkExist._id
-            const shop = await db.shop.create(req.body)
-            if (shop) {
+            const owner = await db.owner.create(req.body)
+            if (owner) {
                 return res.success({
-                    msg: 'Shop type created',
-                    result: shop,
+                    msg: 'owner type created',
+                    result: owner,
                 })
             }
             return res.clientError({
-                msg: 'Shop type Creation Failed',
+                msg: 'owner type Creation Failed',
             })
         } catch (error) {
             errorHandlerFunction(res, error)
@@ -86,12 +77,12 @@ module.exports = {
             }
             const populateValue = [
                 { path: "owner", select: 'firstName lastName email mobile img_url' },
-                { path: 'shopType', select: 'name' },
+                { path: 'ownerType', select: 'name' },
                 { path: 'jobType', select: 'name' }
             ]
             if (_id) {
                 filter._id = _id
-                const data = await db.shop.findOne(filter).populate(populateValue)
+                const data = await db.owner.findOne(filter).populate(populateValue)
                 if (data) {
                     return res.success({
                         msg: responseMessages[1008],
@@ -112,7 +103,7 @@ module.exports = {
             else if (sortBy === 'latest') sort = { createdAt: -1 }
 
 
-            const getRoles = await db.shop.find(filter).populate(populateValue).sort(sort)
+            const getRoles = await db.owner.find(filter).populate(populateValue).sort(sort)
             if (!getRoles.length) {
                 return res.success({
                     msg: responseMessages[1012],
@@ -120,7 +111,7 @@ module.exports = {
                 })
             }
             return res.success({
-                msg: 'Shop Data Fetched',
+                msg: 'owner Data Fetched',
                 result: getRoles,
             })
         } catch (error) {
@@ -139,27 +130,27 @@ module.exports = {
             }
 
             const filterQuery = { isDeleted: false, _id };
-            const checkEixsts = await db.shopType.findOne(filterQuery);
+            const checkEixsts = await db.ownerType.findOne(filterQuery);
             if (!checkEixsts) {
                 return res.clientError({
-                    msg: 'Shop type Not Found..!'
+                    msg: 'owner type Not Found..!'
                 });
             };
-            const checkUnique = await db.shopType.findOne({ _id: { $ne: _id }, name: req?.body?.name, isDeleted: false });
+            const checkUnique = await db.ownerType.findOne({ _id: { $ne: _id }, name: req?.body?.name, isDeleted: false });
             if (checkUnique) {
                 return res.clientError({
-                    msg: `${checkUnique.name} this type of Shop type is Already taken`
+                    msg: `${checkUnique.name} this type of owner type is Already taken`
                 });
             };
-            const data = await db.shopType.updateOne(filterQuery, req.body);
+            const data = await db.ownerType.updateOne(filterQuery, req.body);
             if (data.modifiedCount) {
                 return res.success({
                     result: data,
-                    msg: 'Shop type Updated Successfully..!'
+                    msg: 'owner type Updated Successfully..!'
                 })
             };
             return res.clientError({
-                msg: 'Shop type Update Failed...!'
+                msg: 'owner type Update Failed...!'
             });
         } catch (error) {
             errorHandlerFunction(error)
@@ -168,21 +159,21 @@ module.exports = {
     delete: async (req, res) => {
         try {
             const filterQuery = { _id: req.params.id, isDeleted: false };
-            const checkEixst = await db.shopType.findOne(filterQuery);
+            const checkEixst = await db.ownerType.findOne(filterQuery);
             if (!checkEixst) {
                 return res.clientError({
-                    msg: 'Shop type Not Found..!'
+                    msg: 'owner type Not Found..!'
                 });
             };
-            const data = await db.shopType.updateOne(filterQuery, { isDeleted: true });
+            const data = await db.ownerType.updateOne(filterQuery, { isDeleted: true });
             if (data.modifiedCount) {
                 return res.success({
                     result: data,
-                    msg: 'Shop type Deleted Successfully..!'
+                    msg: 'owner type Deleted Successfully..!'
                 })
             };
             return res.clientError({
-                msg: 'Shop type Delete Failed...!'
+                msg: 'owner type Delete Failed...!'
             });
         } catch (error) {
             errorHandlerFunction(error)
@@ -191,7 +182,7 @@ module.exports = {
     status: async (req, res) => {
         try {
             const id = req.params.id
-            const data = await db.shopType.findOne({ _id: id, isDeleted: false })
+            const data = await db.ownerType.findOne({ _id: id, isDeleted: false })
             if (!data) {
                 return res.clientError({
                     msg: "Data not found"
@@ -202,7 +193,7 @@ module.exports = {
             data.status = status
             await data.save()
             return res.success({
-                msg: 'Shop type status updated',
+                msg: 'owner type status updated',
             })
         } catch (error) {
             errorHandlerFunction(res, error)

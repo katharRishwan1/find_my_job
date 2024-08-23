@@ -7,6 +7,7 @@ const { bcrypt } = require('../services/imports');
 const { sendSMS, sendOTP } = require('../services/otp_helper');
 const { randomChar } = require('../services/random_number');
 const { redisAndToken } = require('../services/redis_token');
+const jwtHelper = require('../services/jwt_helper');
 
 module.exports = {
     signin: async (req, res) => {
@@ -24,13 +25,21 @@ module.exports = {
                 return res.clientError({ msg: responseMessages[1009] });
             };
             if (!device_id && !ip) return res.clientError({ msg: responseMessages[1020] });
-            const tokens = await redisAndToken(
-                checkExist._id.toString(),
-                device_id,
-                ip,
-                checkExist.role.name,
-                checkExist.role._id.toString(),
-            );
+            // const tokens = await redisAndToken(
+            //     checkExist._id.toString(),
+            //     device_id,
+            //     ip,
+            //     checkExist.role.name,
+            //     checkExist.role._id.toString(),
+            // );
+            const payload = { user_id: checkExist._id.toString(), device_id, ip, roleType: checkExist.role.name, roleId: checkExist.role._id.toString() };
+
+            const accessToken = jwtHelper.signAccessToken(payload);
+            const refreshToken = jwtHelper.signRefreshToken(payload);
+            const tokens = {
+                accessToken,
+                refreshToken,
+            };
             // console.log('tokens---------', tokens);
             const userDetails = {
                 firstName: checkExist.firstName,
@@ -47,34 +56,41 @@ module.exports = {
                 }
             });
         } catch (error) {
-            console.log('error-----', error);
-            errorHandlerFunction(error)
+
+            errorHandlerFunction(res, error)
         }
     },
     signup: async (req, res) => {
         try {
-            const { email, firstName, lastName, role, mobile } = req.body;
-            const filterQuery = { isDeleted: false, $or: [{ email, mobile }] };
-            const checkEixst = await db.user.findOne(filterQuery);
-            if (checkEixst) {
-                return res.clientError({
-                    msg: responseMessages[1014]
-                })
-            };
-            req.body.password = await bcrypt.hashSync(req.body.password, 8)
-            const data = await db.user.create(req.body);
-            if (data) {
+
+
+            const filterArray = [{ mobile: req.body.mobile }]
+            if (req.body.email) filterArray.push({ email: req.body.email })
+
+            const checkExists = await userModel.findOne({ isDeleted: false, $or: filterArray })
+            if (checkExists) {
+                return res.clientError({ msg: responseMessages[1014] })
+            }
+            const checkRoleExists = await db.role.findOne({ _id: req.body.role, isDeleted: false })
+            if (!checkRoleExists) return res.clientError({ msg: 'Invalid Role' })
+
+            const hashedPassword = await bcrypt.hashSync(req.body.password, 8)
+            req.body.password = hashedPassword
+            req.body.role = checkRoleExists._id.toString()
+            req.body.createdBy = req.decoded.user_id
+            const data = await db.user.create(req.body)
+            if (data && data._id) {
                 return res.success({
-                    msg: responseMessages[1022],
-                    result: data
-                });
-            };
+                    result: data,
+                    msg: 'User Created Successfully...!',
+                })
+            }
             return res.clientError({
-                msg: responseMessages[1018]
-            });
+                msg: 'User Creation Failed..!',
+            })
         } catch (error) {
             console.log('error------', error);
-            errorHandlerFunction(error);
+            errorHandlerFunction(res, error);
         }
     },
     sendOtp: async (req, res) => {
@@ -144,194 +160,6 @@ module.exports = {
         }
 
     },
-    ownerSendOtp: async (req, res) => {
-        try {
-            const { mobile } = req.body
-            let isMobile = false
-
-            const num = Number(mobile)
-            if (num) {
-                isMobile = true
-            }
-            const filterQuery = { isDeleted: false }
-
-            if (isMobile) {
-                filterQuery.mobile = mobile.toString()
-            } else {
-                filterQuery.email = mobile
-            }
-            const checkExist = await db.user.findOne(filterQuery)
-            if (!checkExist) {
-                const createData = {}
-                if (isMobile) {
-                    createData.mobile = mobile.toString()
-                } else {
-                    createData.email = mobile
-                }
-                const findRole = await db.role.findOne({
-                    name: roleNames.own,
-                    isDeleted: false,
-                })
-                createData.role = findRole._id
-                const data = await db.user.create(createData)
-                if (!data) {
-                    return res.clientError({
-                        msg: 'something went wrong',
-                    })
-                }
-            }
-            let randomNumber
-            if (enviroment === 'production') {
-                randomNumber = Math.floor(100000 + Math.random() * 900000)
-            }
-            if (enviroment !== 'production') {
-                randomNumber = 123456
-            }
-            const userName = checkExist && checkExist.firstName ? checkExist.firstName : 'User'
-            const message = `Dear ${userName}, Your OTP for ${'login'} portal is: ${randomNumber}.Don't share with any one `
-            const otpCreate = {
-                mobile,
-                code: randomNumber,
-            }
-
-            if (!isMobile) {
-                const title = 'sending otp to email for verification'
-                await sendEmail(mobile, title, message)
-            } else {
-                if (enviroment === 'production') {
-                    const resp = await sendSMS(mobile, message)
-                    console.log('resp--------------------', resp)
-                    if (resp.data.status === false || resp.data.code === '007') {
-                        return res.clientError({ msg: resp.data.description })
-                    }
-                }
-            }
-
-            const checkOtp = await db.otp.findOne({ mobile })
-            if (checkOtp) {
-                const data = await db.otp.updateOne({ mobile }, otpCreate)
-                if (enviroment === 'production' && data.modifiedCount) {
-                    return res.success({
-                        msg: responseMessages[1015],
-                    })
-                }
-                if (data) {
-                    return res.success({
-                        msg: responseMessages[1015],
-                    })
-                }
-                return res.clientError({
-                    msg: responseMessages[1019],
-                })
-            } else {
-                const updateOtp = await db.otp.create(otpCreate)
-                if (updateOtp) {
-                    return res.success({
-                        msg: responseMessages[1015],
-                    })
-                }
-                return res.clientError({
-                    msg: responseMessages[1018],
-                })
-            }
-        } catch (error) {
-            errorHandlerFunction(res, error)
-        }
-    },
-    jobseekerSendOtp: async (req, res) => {
-        try {
-            const { mobile } = req.body
-            let isMobile = false
-
-            const num = Number(mobile)
-            if (num) {
-                isMobile = true
-            }
-            const filterQuery = { isDeleted: false }
-
-            if (isMobile) {
-                filterQuery.mobile = mobile.toString()
-            } else {
-                filterQuery.email = mobile
-            }
-            const checkExist = await db.user.findOne(filterQuery)
-            if (!checkExist) {
-                const createData = {}
-                if (isMobile) {
-                    createData.mobile = mobile.toString()
-                } else {
-                    createData.email = mobile
-                }
-                const findRole = await db.role.findOne({
-                    name: roleNames.jb,
-                    isDeleted: false,
-                })
-                createData.role = findRole._id
-                const data = await db.user.create(createData)
-                if (!data) {
-                    return res.clientError({
-                        msg: 'something went wrong',
-                    })
-                }
-            }
-            let randomNumber
-            if (enviroment === 'production') {
-                randomNumber = Math.floor(100000 + Math.random() * 900000)
-            }
-            if (enviroment !== 'production') {
-                randomNumber = 123456
-            }
-            const userName = checkExist && checkExist.firstName ? checkExist.firstName : 'User'
-            const message = `Dear ${userName}, Your OTP for ${'login'} portal is: ${randomNumber}.Don't share with any one `
-            const otpCreate = {
-                mobile,
-                code: randomNumber,
-            }
-
-            if (!isMobile) {
-                const title = 'sending otp to email for verification'
-                await sendEmail(mobile, title, message)
-            } else {
-                if (enviroment === 'production') {
-                    const resp = await sendSMS(mobile, message)
-                    console.log('resp--------------------', resp)
-                    if (resp.data.status === false || resp.data.code === '007') {
-                        return res.clientError({ msg: resp.data.description })
-                    }
-                }
-            }
-
-            const checkOtp = await db.otp.findOne({ mobile })
-            if (checkOtp) {
-                const data = await db.otp.updateOne({ mobile }, otpCreate)
-                if (enviroment === 'production' && data.modifiedCount) {
-                    return res.success({
-                        msg: responseMessages[1015],
-                    })
-                }
-                if (data) {
-                    return res.success({
-                        msg: responseMessages[1015],
-                    })
-                }
-                return res.clientError({
-                    msg: responseMessages[1019],
-                })
-            } else {
-                const updateOtp = await db.otp.create(otpCreate)
-                if (updateOtp) {
-                    return res.success({
-                        msg: responseMessages[1015],
-                    })
-                }
-                return res.clientError({
-                    msg: responseMessages[1018],
-                })
-            }
-        } catch (error) {
-            errorHandlerFunction(res, error)
-        }
-    },
     verifyOtp: async (req, res) => {
         try {
             let { otp, mobile, device_id, ip, } = req.body;
@@ -363,13 +191,20 @@ module.exports = {
             };
             if (!device_id) device_id = '123';
             if (!ip) ip = '3523'
-            const tokens = await redisAndToken(
-                checkExist._id.toString(),
-                device_id,
-                ip,
-                checkExist.role.name,
-                checkExist.role._id.toString()
-            );
+            // const tokens = await redisAndToken(
+            //     checkExist._id.toString(),
+            //     device_id,
+            //     ip,
+            //     checkExist.role.name,
+            //     checkExist.role._id.toString()
+            // );
+            const payload = { user_id: checkExist._id.toString(), device_id, ip, roleType: checkExist.role.name, roleId: checkExist.role._id.toString() };
+            const accessToken = jwtHelper.signAccessToken(payload);
+            const refreshToken = jwtHelper.signRefreshToken(payload);
+            const tokens = {
+                accessToken,
+                refreshToken,
+            };
             const userDetails = {
                 firstName: checkExist.firstName,
                 lastName: checkExist.lastName,
@@ -377,6 +212,7 @@ module.exports = {
                 role: checkExist.role,
                 mobile: checkExist.mobile,
             };
+            console.log('happening')
             return res.success({
                 msg: responseMessages[1021],
                 result: {
@@ -385,8 +221,7 @@ module.exports = {
                 }
             });
         } catch (error) {
-            console.log('error-', error);
-            errorHandlerFunction(error);
+            errorHandlerFunction(res, error);
         }
     },
     changePassword: async (req, res) => {
@@ -416,7 +251,7 @@ module.exports = {
             });
         } catch (error) {
             console.log('error----', error);
-            errorHandlerFunction(error)
+            errorHandlerFunction(res, error)
         }
     },
     forgotPassword: async (req, res) => {
@@ -549,7 +384,7 @@ module.exports = {
                 msg: responseMessages[1029]
             });
         } catch (error) {
-            errorHandlerFunction(error);
+            errorHandlerFunction(res, error);
         }
     },
     resetVerify: async (req, res, next) => {
@@ -580,7 +415,7 @@ module.exports = {
                 }
             }
         } catch (error) {
-            errorHandlerFunction(error);
+            errorHandlerFunction(res, error);
         }
     }
 }

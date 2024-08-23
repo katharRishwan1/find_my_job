@@ -4,4 +4,4 @@ exports.user = require('./user');
 exports.shopType = require('./shopType')
 exports.upload = require('./upload')
 exports.jobType = require('./jobType')
-exports.shop = require('./shop')
+exports.owner = require('./owner')
