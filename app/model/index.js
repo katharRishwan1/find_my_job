@@ -5,4 +5,4 @@ exports.resetPassword = require('./resetPassword');
 exports.shopType = require('./shopType');
 exports.jobType = require('./jobType')
 exports.pincode = require('./pincode')
-exports.shop = require('./shop')
+exports.owner = require('./owner')
