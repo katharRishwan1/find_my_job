@@ -37,7 +37,7 @@ const os = require('os');
 
 const app = express();
 
-app.get('/api/ip', (req, res) => {
+app.get('/auth/api/ip', (req, res) => {
   const interfaces = os.networkInterfaces();
   let address;
 
@@ -51,7 +51,6 @@ app.get('/api/ip', (req, res) => {
       }
     }
   }
-
   res.json({ ip: address });
 });
 
